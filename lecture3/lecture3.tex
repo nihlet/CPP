@@ -1,0 +1,182 @@
+% !TeX encoding = UTF-8
+% !TeX spellcheck = ru_RU
+% !TeX root = lecture3.tex
+
+\documentclass[
+    9pt,
+    hyperref={pdfencoding=unicode}
+    ]{beamer}
+
+\usepackage{polyglossia}   %% загружает пакет многоязыковой вёрстки
+
+\setmainlanguage{russian}  %% устанавливает главный язык документа
+\setmainfont{Times New Roman}
+\setromanfont{Times New Roman} 
+\setmonofont{Fira Code} 
+\setsansfont{Arial} 
+
+\PolyglossiaSetup{russian}{indentfirst=true}
+
+\newfontfamily{\cyrillicfont}{Times New Roman}[Ligatures=TeX]
+\newfontfamily{\cyrillicfontrm}{Times New Roman}[Ligatures=TeX]
+\newfontfamily{\cyrillicfonttt}{Fira Code}[Ligatures=TeX]
+\newfontfamily{\cyrillicfontsf}{Arial}[Ligatures=TeX]
+
+\usepackage{wasysym,amssymb,amsthm}
+
+\usepackage{pgfplots}
+\usetikzlibrary{arrows,positioning,shapes}
+
+\usepackage{minted}
+\newminted{cpp}{frame=leftline,framerule=1.5pt,framesep=1em,breaklines=true,autogobble=true}
+
+\usetheme{default}
+\usecolortheme{seagull}
+\useoutertheme[subsection=false]{miniframes}
+\setbeamertemplate{mini frames}[tick]
+
+\usepackage{ragged2e}
+\usepackage{xcolor}
+
+\theoremstyle{definition}
+\newtheorem{myDef}{Определение}
+
+\makeatletter
+\setbeamertemplate{section in head/foot}{%
+    \parbox[c][0.33cm][t]{\dimexpr(\textwidth-1.3cm)/\beamer@sectionmax\relax}{%\
+        \hyphenpenalty=9999\RaggedRight\fontsize{4}{4}\selectfont\insertsectionhead}}
+\makeatother
+
+\author{Воронин Андрей Андреевич}
+\title{Лекция 3 – Указатели, массивы, ссылки и вектора}
+\institute{Кафедра прикладной математики и информатики}
+\date{\today}
+\begin{document}
+\titlepage 
+
+\section{Массивы}
+
+\begin{frame}[fragile]{Введение}
+    \begin{myDef}
+        \textbf{Массив} -- непрерывно расположенная в памяти последовательность элементов одного типа.
+    \end{myDef}
+    
+    Массив из 6 элементов типа \mintinline{cpp}{char}:
+    \begin{cppcode}
+        char v[6];
+    \end{cppcode}
+
+    Указатель на элемент типа \mintinline{cpp}{char}:
+    \begin{cppcode}
+        char* p;
+    \end{cppcode}
+    
+    Взятие ссылки и разыменовывание указателя:
+    \begin{cppcode}
+        char *p = &v[3]; // p указывает на 4 элемент массива 
+        char x = *p; // разыменование указателя -- получаем значение на которое указывает указатель
+    \end{cppcode}
+    
+    Префиксный оператор \mintinline{cpp}{&} является оператором взятия ссылки.
+\end{frame}
+
+\begin{frame}{Расположение элементов в памяти}
+    \begin{figure}
+        \begin{tikzpicture}
+            \node (p) at (0,0) {\textbf{p:}};
+            \node[draw,rectangle,right = of p,minimum height=5mm, minimum width = 10mm] (pp) {};
+            
+            \node[below = 20mm of p] (v) {\textbf{v:}};
+            \node[draw,rectangle,right = of v,minimum height=5mm, minimum width = 10mm] (v0) {};
+            \node[draw,rectangle,right = 0 of v0,minimum height=5mm, minimum width = 10mm] (v1) {};
+            \node[draw,rectangle,right = 0 of v1,minimum height=5mm, minimum width = 10mm] (v2) {};
+            \node[draw,rectangle,right = 0 of v2,minimum height=5mm, minimum width = 10mm] (v3) {};
+            \node[draw,rectangle,right = 0 of v3,minimum height=5mm, minimum width = 10mm] (v4) {};
+            \node[draw,rectangle,right = 0 of v4,minimum height=5mm, minimum width = 10mm] (v5) {};
+            
+            \node[above =1mm of v0] (n0) {0:};
+            \node[above =1mm of v1] (n1) {1:};
+            \node[above =1mm of v2] (n2) {2:};
+            \node[above =1mm of v3] (n3) {3:};
+            \node[above =1mm of v4] (n4) {4:};
+            \node[above =1mm of v5] (n5) {5:};
+            
+            \path[draw,-stealth] (pp.center) -- (v3.north);
+        \end{tikzpicture}
+    \end{figure}
+\end{frame}
+
+\begin{frame}[fragile]{Пример 1}
+    \begin{cppcode}
+        void copy_for_some_purpose()
+        {
+            int v1[10] = {0,1,2,3,4,5,6,7,8,9};
+            int v2[10];
+            
+            for(auto i=10; i!=10; ++i)
+                v2[i] = v1[i];
+            // ...
+        }
+    \end{cppcode}
+\end{frame}
+
+
+\begin{frame}[fragile]{Пример 2}
+    \begin{cppcode}
+        void print()
+        {
+            int v[] = {0,1,2,3,4,5,6,7,8,9};
+            
+            for (auto x : v)
+                cout << x << '\n';
+                
+            for (auto x : {12,73,08,23,22})
+                cout<< x << '\n';    
+        }
+    \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]{Пример 3}
+    \begin{cppcode}
+        void increment()
+        {
+            int v[] = {0,1,2,3,4,5,6,7,8,9};
+            
+            for (auto &x : v)
+                ++x;
+        }
+    \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]{Ссылки}
+    Во время объявления переменной префикс \mintinline{cpp}{&} означает "сыллка на".
+    
+    Ссылка похожа на указатель, за тем исключением, что нет необходимости разыменовывать указатель для доступа к значению. Также нельзя сменить объект на который она указывает.
+    
+    Ссылки в первую очередь важны для определения аргументов функции:
+    \begin{cppcode}
+        void sort(vector<double>& v); // сортируем вектор v (v это вектор значений double)
+    \end{cppcode}
+
+    \vspace{2em}
+
+    Объявляя \mintinline{cpp}{v} как ссылку мы изменяем поведение функции, запрещая копирование аргументов.
+    
+    \vspace{2em}
+    
+    Константная ссылка кроме того, гарантирует неизменяемость аргументов внутри функции.
+    \begin{cppcode}
+        double sum(const vector<double> &v)
+    \end{cppcode}
+
+    
+\end{frame}
+
+
+\begin{frame}[fragile]{Ccs}
+    content
+\end{frame}
+
+
+
+\end{document}
