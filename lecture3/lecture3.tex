@@ -41,6 +41,22 @@
 \theoremstyle{definition}
 \newtheorem{myDef}{Определение}
 
+\usepackage{csquotes}
+\usepackage[%
+backend=biber,% движок
+bibencoding=utf8,% кодировка bib файла
+sorting=none,% настройка сортировки списка литературы
+style=gost-numeric,% стиль цитирования и библиографии (по ГОСТ)
+language=autobib,% получение языка из babel/polyglossia, default: autobib % если ставить autocite или auto, то цитаты в тексте с указанием страницы, получат указание страницы на языке оригинала
+autolang=other,% многоязычная библиография
+clearlang=true,% внутренний сброс поля language, если он совпадает с языком из babel/polyglossia
+defernumbers=true,% нумерация проставляется после двух компиляций, зато позволяет выцеплять библиографию по ключевым словам и нумеровать не из большего списка
+sortcites=true,% сортировать номера затекстовых ссылок при цитировании (если в квадратных скобках несколько ссылок, то отображаться будут отсортированно, а не абы как)
+doi=false,% Показывать или нет ссылки на DOI
+isbn=true,% Показывать или нет ISBN, ISSN, ISRN
+]{biblatex}
+\addbibresource{biblio.bib}
+
 \makeatletter
 \setbeamertemplate{section in head/foot}{%
     \parbox[c][0.33cm][t]{\dimexpr(\textwidth-1.3cm)/\beamer@sectionmax\relax}{%\
@@ -54,7 +70,7 @@
 \begin{document}
 \titlepage 
 
-\section{Массивы}
+\section{Синтаксис}
 
 \begin{frame}[fragile]{Введение}
     \begin{myDef}
@@ -80,9 +96,9 @@
     Префиксный оператор \mintinline{cpp}{&} является оператором взятия ссылки.
 \end{frame}
 
-\begin{frame}{Расположение элементов в памяти}
+\begin{frame}{Указатель и массив}
     \begin{figure}
-        \begin{tikzpicture}
+        \begin{tikzpicture}[align=center,font=\ttfamily]
             \node (p) at (0,0) {\textbf{p:}};
             \node[draw,rectangle,right = of p,minimum height=5mm, minimum width = 10mm] (pp) {};
             
@@ -166,17 +182,340 @@
     
     Константная ссылка кроме того, гарантирует неизменяемость аргументов внутри функции.
     \begin{cppcode}
-        double sum(const vector<double> &v)
+        double sum(const vector<double> &v);
     \end{cppcode}
 
     
 \end{frame}
 
 
-\begin{frame}[fragile]{Ccs}
-    content
+\begin{frame}[fragile]{Нулевой указатель}
+    \begin{cppcode}
+        double *pd = nullptr;
+        Link<Record> *lst = nullptr; // указатель на параметризуемый контейнер
+        int x = nullptr;     		 // error: nullptr is a pointer not an integer
+    \end{cppcode}
+
+    \vspace{2em}
+    
+    В более раннем коде можно встретить использование \mintinline{cpp}{0} или \mintinline{cpp}{NULL} вместо использования \mintinline{cpp}{nullptr}. Тем не менее использование \mintinline{cpp}{nullptr} избавляет от коллизии с целочисленными литералами и указателями.  
+
 \end{frame}
 
+\begin{frame}[fragile]{Нулевой указатель}
+    Часто важно проверять аргументы функции на тот случай, что они на самом деле указывают на существующий объект.
+    \begin{cppcode}
+        int count_x (const char *p, char x)
+        {
+            if (p==nullptr)
+                return 0;
+            int count = 0;
+            for (; *p!=0; ++p)
+                if (*p==x)
+                    ++count;
+            return count;
+        }
+    \end{cppcode}
+    Выше мы предполагаем, что \mintinline{cpp}{char *} это так называемая строка в C-стиле, которая оканчивается нулевым терминирующим символом \mintinline{cpp}{'\0'}.
+\end{frame}
+
+\begin{frame}[fragile]{Нулевой указатель}
+    В предыдущем примере мы не использовали инициализирующее значение в цикле \mintinline{cpp}{for}, мы можем использовать цикл \mintinline{cpp}{while}
+    \begin{cppcode}
+        int count_x (const char *p, char x)
+        {
+            if (p==nullptr)
+            return 0;
+            int count = 0;
+            while (*p)
+            {
+                if (*p==x)
+                    ++count;
+                ++p;
+            }
+            return count;
+        }
+    \end{cppcode}
+\end{frame}
+
+\begin{frame}{Использование аппаратных возможностей}
+    \begin{figure}
+        \begin{tikzpicture}[align=center,font=\ttfamily]
+        \node (p) at (0,0) {\textbf{p:}};
+        \node[draw,rectangle,right = of p,minimum height=5mm, minimum width = 10mm] (pp) {};
+        
+        \node[below = 20mm of p] (v) {\textbf{v:}};
+        \node[draw,rectangle,right = of v,minimum height=5mm, minimum width = 10mm] (v0) {};
+        \node[draw,rectangle,right = 0 of v0,minimum height=5mm, minimum width = 10mm] (v1) {};
+        \node[draw,rectangle,right = 0 of v1,minimum height=5mm, minimum width = 10mm] (v2) {};
+        \node[draw,rectangle,right = 0 of v2,minimum height=5mm, minimum width = 10mm] (v3) {};
+        \node[draw,rectangle,right = 0 of v3,minimum height=5mm, minimum width = 10mm] (v4) {};
+        \node[draw,rectangle,right = 0 of v4,minimum height=5mm, minimum width = 10mm] (v5) {};
+        
+        \node[above =1mm of v0] (n0) {0:};
+        \node[above =1mm of v1] (n1) {1:};
+        \node[above =1mm of v2] (n2) {2:};
+        \node[above =1mm of v3] (n3) {3:};
+        \node[above =1mm of v4] (n4) {4:};
+        \node[above =1mm of v5] (n5) {5:};
+        
+        \path[draw,-stealth] (pp.center) -- (v3.north);
+        \end{tikzpicture}
+    \end{figure}
+\end{frame}
+
+\section{Присваивание}
+\begin{frame}[fragile]{Присваивание переменных}
+    \begin{cppcode}
+        int x = 2;
+        int y = 3;
+        x = y; // x становится равным 3
+        // Note: x==y
+    \end{cppcode}
+    \begin{figure}
+        \begin{tikzpicture}[align=center,node distance=1mm,font=\ttfamily]
+        \node (x) at (0,0) {\textbf{x:}};
+        \node[draw,rectangle,right = of x,minimum height=5mm, minimum width = 10mm] (xx) {2};
+        
+        \node[right = 8mm of xx] (y) {\textbf{y:}};
+        \node[draw,rectangle,right = of y,minimum height=5mm, minimum width = 10mm] (yy) {3};
+        
+        \node[right = 8mm of yy] (assign) {\textbf{x=y;}};
+        
+        \node[right = 8mm of assign] (x2) {\textbf{x:}};
+        \node[draw,rectangle,right = of x2,minimum height=5mm, minimum width = 10mm] (xx2) {2};
+        
+        \node[right = 8mm of xx2] (y2) {\textbf{y:}};
+        \node[draw,rectangle,right = of y2,minimum height=5mm, minimum width = 10mm] (yy2) {3};
+        \end{tikzpicture}
+    \end{figure}
+    
+    \vspace{2em}
+    если после этого \mintinline{cpp}{x=99;}, то из-за этого значение \mintinline{cpp}{y} останется равным 3.
+\end{frame}
+
+
+\begin{frame}[fragile]{Указатели}
+    \begin{cppcode}
+        int x = 2;
+        int y = 3;
+        int *p = &x;
+        int *y = &y; // сейчас p != q и *p != *q
+        p = q;       // p становится равным &y; сейчас p == q и *p == *q
+    \end{cppcode}
+
+    \vspace{2em}
+    \begin{figure}
+        \begin{tikzpicture}[align=center,node distance=1mm,font=\ttfamily]
+        \node (p) at (0,0) {\textbf{p:}};
+        \node[draw,rectangle,right = of p,minimum height=5mm, minimum width = 10mm] (pp) {88};
+        
+        \node[below = 10mm of p] (x) {\textbf{x:}};
+        \node[draw,rectangle,right = of x,minimum height=5mm, minimum width = 10mm] (xx) {2};
+        
+        \node[right = 8mm of pp] (q) {\textbf{q:}};
+        \node[draw,rectangle,right = of q,minimum height=5mm, minimum width = 10mm] (qq) {92};
+        
+        \node[right = 8mm of xx] (y) {\textbf{y:}};
+        \node[draw,rectangle,right = of y,minimum height=5mm, minimum width = 10mm] (yy) {3};
+        
+        \node[above right = 5mm and 8mm of yy.east] (assign) {\textbf{p=q;}};
+        
+        \node[above right = 5mm and 8mm of assign.east] (p2) {\textbf{p:}};
+        \node[draw,rectangle,right = of p2,minimum height=5mm, minimum width = 10mm] (pp2) {92};
+        
+        \node[below = 10mm of p2] (x2) {\textbf{x:}};
+        \node[draw,rectangle,right = of x2,minimum height=5mm, minimum width = 10mm] (xx2) {2};
+        
+        \node[right = 8mm of pp2] (q2) {\textbf{q:}};
+        \node[draw,rectangle,right = of q2,minimum height=5mm, minimum width = 10mm] (qq2) {92};
+        
+        \node[right = 8mm of xx2] (y2) {\textbf{y:}};
+        \node[draw,rectangle,right = of y2,minimum height=5mm, minimum width = 10mm] (yy2) {3};
+        
+        \path[draw,-stealth] (pp) -- (xx);
+        \path[draw,-stealth] (qq) -- (yy);
+        \path[draw,-stealth] (pp2) -- (yy2);
+        \path[draw,-stealth] (qq2) -- (yy2);
+        \end{tikzpicture}
+    \end{figure}
+\end{frame}
+
+\begin{frame}[fragile]{Ссылки}
+    \begin{cppcode}
+        int x = 2;
+        int y = 3;
+        int &r = x; // r ссылается на x
+        int &t = y; // t ссылается на y
+        r = t;      // читаем по ссылке t и записываем по ссылке r
+    \end{cppcode}
+    
+    \vspace{2em}
+    \begin{figure}
+        \begin{tikzpicture}[align=center,node distance=1mm,font=\ttfamily]
+        \node (p) at (0,0) {\textbf{r:}};
+        \node[draw,rectangle,right = of p,minimum height=5mm, minimum width = 10mm] (pp) {88};
+        
+        \node[below = 10mm of p] (x) {\textbf{x:}};
+        \node[draw,rectangle,right = of x,minimum height=5mm, minimum width = 10mm] (xx) {2};
+        
+        \node[right = 8mm of pp] (q) {\textbf{t:}};
+        \node[draw,rectangle,right = of q,minimum height=5mm, minimum width = 10mm] (qq) {92};
+        
+        \node[right = 8mm of xx] (y) {\textbf{y:}};
+        \node[draw,rectangle,right = of y,minimum height=5mm, minimum width = 10mm] (yy) {3};
+        
+        \node[above right = 5mm and 8mm of yy.east] (assign) {\textbf{r=t;}};
+        
+        \node[above right = 5mm and 8mm of assign.east] (p2) {\textbf{r:}};
+        \node[draw,rectangle,right = of p2,minimum height=5mm, minimum width = 10mm] (pp2) {88};
+        
+        \node[below = 10mm of p2] (x2) {\textbf{x:}};
+        \node[draw,rectangle,right = of x2,minimum height=5mm, minimum width = 10mm] (xx2) {3};
+        
+        \node[right = 8mm of pp2] (q2) {\textbf{t:}};
+        \node[draw,rectangle,right = of q2,minimum height=5mm, minimum width = 10mm] (qq2) {92};
+        
+        \node[right = 8mm of xx2] (y2) {\textbf{y:}};
+        \node[draw,rectangle,right = of y2,minimum height=5mm, minimum width = 10mm] (yy2) {3};
+        
+        \path[draw,-stealth] (pp) -- (xx);
+        \path[draw,-stealth] (qq) -- (yy);
+        \path[draw,-stealth] (pp2) -- (xx2);
+        \path[draw,-stealth] (qq2) -- (yy2);
+        \end{tikzpicture}
+    \end{figure}
+\end{frame}
+
+\begin{frame}[fragile]{Инициализация}
+    \begin{cppcode}
+        int x = 7;
+        int &r {x}; // связываем r с x (r ссылается на x)
+        r = 8;      // присваеваем значение к чему-то на что ссылается r
+        
+        int &r2;    // error: неинициализированная ссылка
+        r2 = 99;    // присваеваем значение к чему-то на что ссылается r2
+    \end{cppcode}
+\end{frame}
+
+\section{Вектор}
+\begin{frame}[fragile]{Инициализация}
+    \begin{cppcode}
+        #include <vector>
+        std::vector<int> myVector; // создаем пустой вектор типа int
+        myVector.reserve(10);      // резервируем память под 10 элементов типа int
+        
+        int myArray[10]; // аналог в виде массива 
+    \end{cppcode}
+
+    \vspace{1em}
+    \begin{cppcode}
+        #include <iostream>
+        #include <vector> 
+        using namespace std;
+        int main()
+        {
+            vector<int> myVector(10);   // объявляем вектор размером в 10 элементов и инициализируем их нулями
+            // вывод элементов вектора на экран
+            for(int i = 0; i < myVector.size(); i++)
+                cout << myVector[i] << ' ';
+            return 0;
+        }
+    \end{cppcode}
+\end{frame}
+
+
+\begin{frame}[fragile]{Инициализация}
+    \begin{cppcode}
+        #include <iostream>
+        #include <vector>
+        using namespace std;
+        int main()
+        {
+            vector<int> vec1(3);
+            // инициализируем элементы вектора vec1
+            vec1[0] = 4;
+            vec1[1] = 2;
+            vec1[2] = 1;
+            vector<int> vec2(3);
+            // инициализируем элементы вектора vec2
+            vec2[2] = 1;
+            vec2[1] = 2;
+            vec2[0] = 4;
+            // сравниваем массивы
+            if (vec1 == vec2) {
+                cout << "vec1 == vec2" << endl;
+            }
+            return 0;
+        }
+    \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]{Вектор}
+    \begin{cppcode}
+        #include <iostream>
+        #include <vector>
+        #include <iterator> // заголовочный файл итераторов
+        using namespace std;
+        
+        int main()
+        {
+            vector<int> vec1; // создаем пустой вектор
+            // добавляем в конец вектора vec1 элементы 4, 3, 1
+            vec1.insert(vec1.end(), 4);
+            vec1.insert(vec1.end(), 3);
+            vec1.insert(vec1.end(), 1);
+            // вывод на экран элементов вектора
+            copy( vec1.begin(),   // итератор начала массива
+                  vec1.end(),     // итератор конца массива
+                  ostream_iterator<int>(cout," ")   //итератор потока вывода
+            );
+            return 0;
+        }
+    \end{cppcode}
+\end{frame}
+
+\section{Рекомендации}
+\begin{frame}[t,allowframebreaks]{Советы}
+    \begin{enumerate}
+        \item Не паникуй!\textcopyright  \: Все станет яснее со временем.
+        \item Не используй только встроенные фичи в язык -- кроме этого еще есть стандартная библиотека.
+        \item Нет необходимости знать все тонкости языка для того чтобы писать хорошие программы.
+        \item "Пакуй" целостные группы операций в функции.
+        \item Функция должна отвечать за одну логическую операцию.
+        \item Старайся создавать функции короткими.
+        \item Используй перегрузку когда функции производят одну и ту же операцию над различными типами.
+        \item Если функция может быть рассчитана на этапе компиляции, то используй \mintinline{cpp}{constexpr}. 
+        \item Необходимо понимать как языковые приметивы отображаются на аппаратное обеспечение.
+        \item 300000000 хуже чем 300'000'000.
+        \item Избегай сложных выражений.
+        \item Избегай преобразований с округлением.
+        \item Минимизируй область видимости переменной.
+        \item Избегай "магических" констант.
+        \item Предпочитай неизменяемые данные.
+        \item Объявляй только одно имя переменной в строчке.
+        \item Локальные переменные и распространенные переменные должны иметь короткие имена, а необычные переменные объявленные далеко от вычислений должны иметь длинные имена.
+        \item Избегай имен похожих друг на друга.
+        \item Избегай имен вида \mintinline{cpp}{ALL_CAPS}.
+        \item Предпочитай инициализацию в виде \mintinline{cpp}{int x {7.9};}
+        \item Используй \mintinline{cpp}{auto} чтобы избегать повторения имен типов.
+        \item Избегай неинициализированных переменных.
+        \item Не объявляй переменную до того как можешь ее инициализировать.
+        \item \mintinline{cpp}{unsigned} типы используются только для битовых операций.
+        \item Используй указатели просто и прямолинейно.
+        \item Не пиши комментариев смысл которых понятен из кода.
+        \item Используй \mintinline{cpp}{nullptr} вместо \mintinline{cpp}{0} или \mintinline{cpp}{NULL}.
+        \item Объясняй свои намерения в комментариях.
+        \item Поддерживай однородную табуляцию.
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}[t,allowframebreaks]
+    \frametitle{Литературные источники}
+    
+    \nocite{*}
+    \printbibliography
+\end{frame}
 
 
 \end{document}
