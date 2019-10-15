@@ -122,6 +122,44 @@ isbn=true,% Показывать или нет ISBN, ISSN, ISRN
     \end{figure}
 \end{frame}
 
+\begin{frame}[fragile]{Зачем нужны массивы?}
+    \begin{cppcode}
+        // Выделяем 30 целочисленных переменных (каждая с разным именем)
+        int testResultStudent1;
+        int testResultStudent2;
+        int testResultStudent3;
+        // ...
+        int testResultStudent30;
+    \end{cppcode}
+    
+    \vspace{2em}
+    \begin{cppcode}
+        int testResult[30]; // выделяем 30 целочисленных переменных, используя фиксированный массив
+    \end{cppcode}
+\end{frame}
+
+
+\begin{frame}[fragile]{Доступ к элементам массива}
+    \begin{cppcode}
+        #include <iostream>
+        
+        int main()
+        {
+            int array[5]; // массив из пяти чисел
+            array[0] = 3; // индекс первого элемента - 0 (нулевой элемент)
+            array[1] = 2;
+            array[2] = 4;
+            array[3] = 8;
+            array[4] = 12; // индекс последнего элемента - 4 
+            
+            std::cout << "The lowest number is " << array[0] << "\n";
+            std::cout << "The sum of the first 5 numbers is " << array[0] + array[1] + array[2] + array[3] + array[4] << "\n";
+            
+            return 0;
+        }
+    \end{cppcode}
+\end{frame}
+
 \begin{frame}[fragile]{Пример 1}
     \begin{cppcode}
         void copy_for_some_purpose()
@@ -129,7 +167,7 @@ isbn=true,% Показывать или нет ISBN, ISSN, ISRN
             int v1[10] = {0,1,2,3,4,5,6,7,8,9};
             int v2[10];
             
-            for(auto i=10; i!=10; ++i)
+            for(auto i=0; i!=10; ++i)
                 v2[i] = v1[i];
             // ...
         }
@@ -225,7 +263,7 @@ isbn=true,% Показывать или нет ISBN, ISSN, ISRN
         int count_x (const char *p, char x)
         {
             if (p==nullptr)
-            return 0;
+                return 0;
             int count = 0;
             while (*p)
             {
@@ -283,7 +321,7 @@ isbn=true,% Показывать или нет ISBN, ISSN, ISRN
         \node[right = 8mm of yy] (assign) {\textbf{x=y;}};
         
         \node[right = 8mm of assign] (x2) {\textbf{x:}};
-        \node[draw,rectangle,right = of x2,minimum height=5mm, minimum width = 10mm] (xx2) {2};
+        \node[draw,rectangle,right = of x2,minimum height=5mm, minimum width = 10mm] (xx2) {3};
         
         \node[right = 8mm of xx2] (y2) {\textbf{y:}};
         \node[draw,rectangle,right = of y2,minimum height=5mm, minimum width = 10mm] (yy2) {3};
@@ -300,7 +338,7 @@ isbn=true,% Показывать или нет ISBN, ISSN, ISRN
         int x = 2;
         int y = 3;
         int *p = &x;
-        int *y = &y; // сейчас p != q и *p != *q
+        int *q = &y; // сейчас p != q и *p != *q
         p = q;       // p становится равным &y; сейчас p == q и *p == *q
     \end{cppcode}
 
@@ -486,7 +524,7 @@ isbn=true,% Показывать или нет ISBN, ISSN, ISRN
         \item Старайся создавать функции короткими.
         \item Используй перегрузку когда функции производят одну и ту же операцию над различными типами.
         \item Если функция может быть рассчитана на этапе компиляции, то используй \mintinline{cpp}{constexpr}. 
-        \item Необходимо понимать как языковые приметивы отображаются на аппаратное обеспечение.
+        \item Необходимо понимать как языковые примитивы отображаются на аппаратное обеспечение.
         \item 300000000 хуже чем 300'000'000.
         \item Избегай сложных выражений.
         \item Избегай преобразований с округлением.
