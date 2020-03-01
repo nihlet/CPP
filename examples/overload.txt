@@ -1,0 +1,74 @@
+#include<iostream>
+#include<string>
+#include<vector>
+#include<array>
+
+int square(int num) {
+    num = num * num;
+    return num;
+}
+
+int square2(int &num) {
+    num = num * num;
+    return num;
+}
+
+float square(float num) {
+    num = num * num;
+    return num;
+}
+
+float square(float num, int add) {
+    num = num * num + add;
+    return num;
+}
+
+template <typename T> T square3(T num)
+{
+    num = num * num;
+    return num;
+}
+
+template <int a> int add(int num)
+{
+    num = num + a;
+    return num;
+}
+
+using myVector = std::array<double, 4>;
+
+int main()
+{
+    int a = 4;
+    std::cout << "???????? ?? ????????" << std::endl; 
+    std::cout << a << std::endl; 
+    std::cout << square(a) << std::endl; 
+    std::cout << a << std::endl; 
+
+
+    std::cout << "???????? ?? ??????" << std::endl; 
+
+    std::cout << a << std::endl; 
+    std::cout << square2(a) << std::endl; 
+    std::cout << a << std::endl; 
+
+    std::cout << "?????????? ???????" << std::endl; 
+    float b = 2;
+    a = 2;
+    std::cout << square(a) << std::endl; 
+    std::cout << square(b) << std::endl; 
+    std::cout << square(b, 5) << std::endl; 
+
+    std::cout << "????????? ???????" << std::endl; 
+    std::cout << square3(b) << std::endl; 
+    std::cout << square3<double>(a) << std::endl; 
+
+    std::cout << add<100>(a) << std::endl; 
+
+    myVector v1 = {1,2,3,4};
+    std::array<double, 4> a1 = {1,2,3,4};
+    std::array<double, 2> a2 = {1,2};
+
+
+    return 0;
+}
