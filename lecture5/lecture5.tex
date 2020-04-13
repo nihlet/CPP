@@ -1,0 +1,410 @@
+% !TeX encoding = UTF-8
+% !TeX spellcheck = ru_RU
+% !TeX root = lecture5.tex
+
+\documentclass[
+    9pt,
+    hyperref={pdfencoding=unicode}
+    ]{beamer}
+
+\usepackage{polyglossia}   %% загружает пакет многоязыковой вёрстки
+
+\setmainlanguage{russian}  %% устанавливает главный язык документа
+\setmainfont{Liberation Serif}
+\setromanfont{Liberation Serif} 
+\setmonofont{Fira Code} 
+\setsansfont{Liberation Sans} 
+
+\PolyglossiaSetup{russian}{indentfirst=true}
+
+\newfontfamily{\cyrillicfont}{Liberation Serif}[Ligatures=TeX]
+\newfontfamily{\cyrillicfontrm}{Liberation Serif}[Ligatures=TeX]
+\newfontfamily{\cyrillicfonttt}{Fira Code}[Ligatures=TeX]
+\newfontfamily{\cyrillicfontsf}{Liberation Sans}[Ligatures=TeX]
+
+\usepackage{wasysym,amssymb,amsthm}
+
+\usepackage{pgfplots}
+\usetikzlibrary{arrows,positioning,shapes}
+
+\usepackage{minted}
+\newminted{cpp}{frame=leftline,framerule=1.5pt,framesep=1em,breaklines=true,autogobble=true,tabsize=4}
+
+\usetheme{default}
+\usecolortheme{seagull}
+\useoutertheme[subsection=false]{miniframes}
+\setbeamertemplate{mini frames}[tick]
+
+\usepackage{ragged2e}
+\usepackage{xcolor}
+
+\theoremstyle{definition}
+\newtheorem{myDef}{Определение}
+
+\usepackage{csquotes}
+\usepackage[%
+backend=biber,% движок
+bibencoding=utf8,% кодировка bib файла
+sorting=none,% настройка сортировки списка литературы
+style=gost-numeric,% стиль цитирования и библиографии (по ГОСТ)
+language=autobib,% получение языка из babel/polyglossia, default: autobib % если ставить autocite или auto, то цитаты в тексте с указанием страницы, получат указание страницы на языке оригинала
+autolang=other,% многоязычная библиография
+clearlang=true,% внутренний сброс поля language, если он совпадает с языком из babel/polyglossia
+defernumbers=true,% нумерация проставляется после двух компиляций, зато позволяет выцеплять библиографию по ключевым словам и нумеровать не из большего списка
+sortcites=true,% сортировать номера затекстовых ссылок при цитировании (если в квадратных скобках несколько ссылок, то отображаться будут отсортированно, а не абы как)
+doi=false,% Показывать или нет ссылки на DOI
+isbn=true,% Показывать или нет ISBN, ISSN, ISRN
+]{biblatex}
+\addbibresource{biblio.bib}
+
+\makeatletter
+\setbeamertemplate{section in head/foot}{%
+    \parbox[c][0.33cm][t]{\dimexpr(\textwidth-1.3cm)/\beamer@sectionmax\relax}{%\
+        \hyphenpenalty=9999\RaggedRight\fontsize{4}{4}\selectfont\insertsectionhead}}
+\makeatother
+
+\title{Лекция 5 – Классы в языке C++}
+\institute{Кафедра прикладной математики и информатики}
+\date{\today}
+\begin{document}
+\titlepage 
+\section{Введение}
+
+\begin{frame}[fragile]{Определение класса}
+    Данные, объявленные отдельно от операций над ними, предоставляют больше возможностей по использованию таких данных. Тем не менее более тесная связь между представлением данных и
+    операцями над ними необходима для того, чтобы определенный пользователем тип имел все свойства, ожидаемые от типа, представляющего объект реального мира.
+
+    \vfill
+    
+    Часто нам надо сохранить представление недоступным для пользователей,
+    чтобы упростить использование, гарантировать последовательное использование
+    данных, сохраняя при этом возможноть улучшить представление. Для этого мы должны
+    различать публично (\mintinline{cpp}{public}) доступные данные (который будет использоваться всеми) 
+    и скрытую (\mintinline{cpp}{private}) реализацию пользовательского типа (которая
+    имеет доступ к недоступным  в противном случае данным). 
+    
+    \vfill
+    
+    Языковой механизм для этого называется \emph{классом}.     
+\end{frame}
+
+\begin{frame}[fragile]
+    
+    Например:
+    
+    \begin{cppcode}
+        class Vector {
+          public:
+            // конструктор класса Vector
+            Vector(int s) :elem{new double[s]}, sz{s} { } 
+            
+            // деструктор класса Vector
+            ~Vector(){ delete[] elem; }
+            
+            // доступ к элементу массива
+            double& operator[](int i) { return elem[i]; } 
+            
+            // размер вектора
+            int size() { return sz; }
+            
+          private:
+            double* elem; // указатель на элементы вектора
+            int sz; // количество элементов
+        };
+    \end{cppcode}    
+      
+         
+     \vfill
+      
+    Имея такое определение, мы можем объявить переменную типа \mintinline{cpp}{Vector}:
+    \begin{cppcode}
+        Vector v(6);
+    \end{cppcode}   
+\end{frame}
+
+\begin{frame}{Представление объектов в памяти}
+    \begin{figure}
+        \begin{tikzpicture}[align=center,font=\ttfamily]
+        \node (Vec) at (0,0) {\textbf{Vector:}};
+        \node[draw,rectangle,below = 0 of Vec,minimum height=5mm, minimum width = 10mm] (VecElem) {};
+        \node[draw,rectangle,below = 0 of VecElem,minimum height=5mm, minimum width = 10mm] (VecSZ) {6};
+        
+        \node[left = 0 of VecElem] (elem) {\textbf{elem:}};
+        \node[left = 0 of VecSZ] (sz) {\textbf{sz:}};
+        
+        \node[draw,rectangle,below right = 1mm and 20mm of VecElem,minimum height=5mm, minimum width = 10mm] (v0) {};
+        \node[draw,rectangle,right = 0 of v0,minimum height=5mm, minimum width = 10mm] (v1) {};
+        \node[draw,rectangle,right = 0 of v1,minimum height=5mm, minimum width = 10mm] (v2) {};
+        \node[draw,rectangle,right = 0 of v2,minimum height=5mm, minimum width = 10mm] (v3) {};
+        \node[draw,rectangle,right = 0 of v3,minimum height=5mm, minimum width = 10mm] (v4) {};
+        \node[draw,rectangle,right = 0 of v4,minimum height=5mm, minimum width = 10mm] (v5) {};
+        
+        \node[above =1mm of v0] (n0) {0:};
+        \node[above =1mm of v1] (n1) {1:};
+        \node[above =1mm of v2] (n2) {2:};
+        \node[above =1mm of v3] (n3) {3:};
+        \node[above =1mm of v4] (n4) {4:};
+        \node[above =1mm of v5] (n5) {5:};
+  
+        \path[draw,-stealth] (VecElem.center) -- (v0.west);
+        \end{tikzpicture}
+    \end{figure}
+    
+    \vfill
+    
+    Объект вектора представляет собой обертку, содержащую указатель на элементы (\mintinline{cpp}{elem}) и количество элементов (\mintinline{cpp}{sz}).
+    Количество элементов (6 в нашем случае) может варьироватся от одного объекта типа \mintinline{cpp}{Vector} к другому объекту типа \mintinline{cpp}{Vector}.
+    
+    \vfill
+    
+    Однако, сам объект типа \mintinline{cpp}{Vector} имеет фиксированный размер.
+    
+    Это базовая техника для обработки переменного объема информации в C++:
+    обработчик фиксированного размера ссылается на изменяющееся количество информации 
+    "где-то еще" (например аллоцированную через оператор \mintinline{cpp}{new}). 
+\end{frame}
+
+
+\begin{frame}[fragile]{Использование публичного интерфейса}
+    Ниже представлено использование приватных полей класса \mintinline{cpp}{Vector} через публичный члены класса \mintinline{cpp}{Vector()},  \mintinline{cpp}{operator[]()} и 
+    \mintinline{cpp}{size()}.
+    
+    \vfill
+    
+    \begin{cppcode}
+        double read_and_sum(int s)
+        {
+            Vector v(s); // создаем вектор s элементов
+            for (int i=0; i!=v.size(); ++i)
+                cin>>v[i]; // читаем содержимое из консоли
+            double sum = 0;
+            for (int i=0; i!=v.size(); ++i)
+                sum+=v[i]; // считаем сумму элементов
+            return sum;
+        }
+    \end{cppcode}
+
+"Функция" член с тем же самым именем что и класс называется \emph{конструктором}, которая используется для создания объектов класса.
+
+\vfill
+
+\mintinline{cpp}{Vector(int)} определяет, каким образом конструируется объект типа \mintinline{cpp}{Vector}. В частности требуется аргумент типа int для того, чтобы создать объект. Это целое число используется как количество элементов вектора.
+\end{frame}
+
+\begin{frame}    
+    Конструктор инициализиурет члены класса \mintinline{cpp}{Vector} 
+    при помощи списка инициализации:
+    \mintinline{cpp}{:elem{new double[s]}, sz{s}}
+    
+    \vfill
+    
+    Таким образом мы инициализируем переменную член \mintinline{cpp}{elem} указателем на \mintinline{cpp}{s} элементов типа \mintinline{cpp}{double} полученных из свободного пулла памяти операционной системы.
+    Затем мы инициализируем \mintinline{cpp}{sz} числом \mintinline{cpp}{s}.
+    
+    \vfill
+    
+    Доступ к элементам предоставляется через квадратные скобки, аналогично массиву встроенному в язык C++. Определение такого доступа соответствует \mintinline{cpp}{operator[]}, которое предоставлет доступ как на чтение, так и на запись значений вектора.
+    
+    \vfill
+    
+    Функция \mintinline{cpp}{size()} возвращает количество элементов в векторе.
+    
+    \vfill
+    
+    "Функция" \mintinline{cpp}{~Vector()} называется \emph{деструктором} класса. 
+    Она предназначена для возвращения аллоцированной памяти обратно в пулл операционной системы. Деструктор вызывается неявно при вытеснении переменной \mintinline{cpp}{v} со стека.
+    
+\end{frame}
+
+\section{Базовый класс}
+\begin{frame}[fragile]{Характеристика базового класса}
+    Основная идея базового класса состоит в том, что его поведение "такое же как и у встроенных типов данных". Например тип комплексных чисел ведет себя так же как и встроенный тип \mintinline{cpp}{int}, за исключением, конечно, их собственной семантики и набора операций. Также \mintinline{cpp}{vector} или \mintinline{cpp}{string} похожы на встроенные массивы, только с лучшим поведением.
+    
+    \vfill
+    
+    Основная характеристика базового класса состоит в том, что представление данных (representation) класса есть часть его определения. Во множестве случаев, таких как \mintinline{cpp}{vector} представление данных в виде одного или нескольких указателей на данные хранящиеся "где-то еще". Но это представление данных существует в каждом объекте базового класса. Это позволяет создавать реализации эффективные по скорости и используемой памяти. В частности это дает:
+    \begin{itemize}
+        \item размещать объекты базового класса на стеке, в статической памяти и других объектах;
+        \item обращаться к объету напрямую (не просто через указатели и ссылки);
+        \item инициализировать объекты сразу и полностью (например используя конструкторы);
+        \item копировать и перемещать объекты.
+    \end{itemize}
+    
+\end{frame}
+
+\begin{frame}[fragile]{Пример арифметического типа}
+    \footnotesize
+    \begin{cppcode}
+        class complex {
+            double re, im; // representation: два числа double
+            public:
+            complex(double r, double i) :re{r}, im{i} {} // конструктор двух аргументов
+            complex(double r) :re{r}, im{0} {} // конструктор одного аргумента
+            complex() :re{0}, im{0} {} // конструктор по умолчанию complex: {0,0}
+            double real() const { return re; }
+            void real(double d) { re=d; }
+            double imag() const { return im; }
+            void imag(double d) { im=d; }
+            complex& operator+=(complex z)
+            {
+                re+=z.re; // сумма по определению комплексных чисел
+                im+=z.im;
+                return *this; // возвращение результата
+            }
+            complex& operator-=(complex z)
+            {
+                re-=z.re;
+                im-=z.im;
+                return *this;
+            }
+            complex& operator*=(complex); // определено вне класса
+            complex& operator/=(complex); // определено вне класса
+        };
+    \end{cppcode}
+\end{frame}
+
+\begin{frame}
+    Приведенная ранее реализация комплексных чисел представляет собой упрощенную версию класса  \mintinline{cpp}{complex} из стандартной библиотеки.
+    
+    \vfill
+    
+    Определение класса содержит только те операции, которым необходим доступ к 
+    представлению данных класса. Представление скрыто за приватным модификатором 
+    доступа. Само по себе представление данных простое и понятное: два числа типа 
+    \mintinline{cpp}{double} представляющие действительную и мнимую часть 
+    комплексного числа.
+    
+    \vfill
+    
+    По умолчанию функции члены, определенные внутри класса, имеют модификатор 
+    \mintinline{cpp}{inline}, который объявлен неявно. Этот модификатор позволяет 
+    компилятору избавиться от функционального вызова и напрямую генерировать байт код 
+    для соответствующей операции.
+    
+    \vfill
+    
+    Конструктор, который может быть вызван без аргументов называется 
+    \emph{конструктором по умолчанию}. Таким образом \mintinline{cpp}{complex()} -- 
+    конструктор по умолчанию класса комплексных чисел. При объявлении конструктора по 
+    умолчанию избегается ситуация создания не инициализированных переменных данного 
+    типа.
+    
+\end{frame}
+
+\begin{frame}[fragile]{Const}
+    Квалификатор \mintinline{cpp}{const}, примененный к функциям возвращающим действительную и мнимую часть комплексного числа, сообщает о том, что функция не изменяет состояние объекта, для которого она вызвана.
+    
+    \vfill
+    
+    Константная функция член может быть вызвана для константных и неконстантных объектов, но неконстантная функция член может быть вызвана только для неконстантных объектов. Например:
+    
+    \vfill
+    
+    \begin{cppcode}
+        complex z = {1,0};
+        const complex cz {1,3};
+        z =cz; //OK: assigning to a non-const var iable
+        cz = z; // error : complex::operator=() is a non-const member function
+        double x = z.real(); // OK: complex::real() is a const member function
+    \end{cppcode}
+\end{frame}
+
+
+\begin{frame}[fragile]{Операторы}
+    Множество полезных операторов не требуют прямого доступа к представлению данных класса \mintinline{cpp}{complex}, таким образом их можно определить вне класса:
+    
+    \vfill
+    
+    \begin{cppcode}
+        complex operator+(complex a, complex b) 
+        { return a+=b; }
+        complex operator-(complex a, complex b) 
+        { return a-=b; }
+        complex operator-(complex a) // унарный минус
+        { return {-a.real(), -a.imag()}; } 
+        complex operator*(complex a, complex b) 
+        { return a*=b; }
+        complex operator/(complex a, complex b) 
+        { return a/=b; }
+    \end{cppcode}
+
+    \vfill
+    
+    Здесь использован факт, что аргументы передаваемые по значению копируются, 
+    таким образом изменение локальной переменной \mintinline{cpp}{a} не влечет изменения оригинальной переменной, с которой вызвана функция.
+
+\end{frame}
+  
+    
+\begin{frame}[fragile]
+   Определение операторов \mintinline{cpp}{==} и \mintinline{cpp}{!=} весьма прямолинейно:
+   \begin{cppcode}
+       bool operator==(complex a, complex b) // equal
+       {
+           return a.real()==b.real() && a.imag()==b.imag();
+       }
+       bool operator!=(complex a, complex b) // not equal
+       {
+           return !(a==b);
+       }
+   \end{cppcode} 
+\end{frame}
+
+\begin{frame}[fragile]
+    Использование класса может быть таким:
+    \begin{cppcode}
+        void f(complex z)
+        {
+            complex a {2.3}; // конструируем {2.3,0.0} из 2.3
+            complex b {1/a};
+            complex c {a+z*complex{1,2.3}};
+            // ...
+            if (c != b)
+                c = -(b/a)+2*b;
+            // ...
+        }
+        
+    \end{cppcode} 
+\end{frame}
+
+\begin{frame}[fragile]{Перегрузка операторов}
+    Компилятор преобразует операторы с участием комплексных чисел в корректные функциональные вызовы. Например, \mintinline{cpp}{c!=b} означает \mintinline{cpp}{operator!=(c,b)} и \mintinline{cpp}{1/a} означает \mintinline{cpp}{operator/(complex{1},a)}
+    
+    \vfill
+    
+    Определенные пользователем операторы ("перегруженные операторы") должны быть реализованы с осторожностью и умом. Синтакс данных операторов фиксирован языком, так что программист не может определить унарный оператор \mintinline{cpp}{/}. Также, невозможно переопределить значение оператора для встроенного типа, тоесть нельзя переопределить \mintinline{cpp}{+} для вычитания двух значений типа \mintinline{cpp}{int}.
+    
+\end{frame}
+
+\section{Рекомендации}
+\begin{frame}[t,allowframebreaks]{Советы}
+    Изучай:    \href{https://github.com/isocpp/CppCoreGuidelines/blob/master/CppCoreGuidelines.md}{https://github.com/isocpp/CppCoreGuidelines/blob/master/CppCoreGuidelines.md}
+    
+    \begin{enumerate}
+        \item Выражай идеи непосредственно в коде.
+        \item Базовый класс -- простейшая форма класса. Когда возможно используй базовый класс вместо более сложных классов и вместо простых структур данных.
+        \item Используй базовые классы для представления простейших концептов.
+        \item Используй базовые классы вместо иерархий классов для критических компонентов требующих высокой производительности.
+        \item Определяй конструкторы для инициализации объекта.
+        \item Создавай функцию член только тогда, когда ей требуется непосредственный доступ к представлению данных класса.
+        \item Определяй операторы преимущественно для имитации их стандартного использования.
+        \item Используй свободные функции для определения симметричных операторов.
+        \item Объявляй функции члены константными, если они не изменяют состояния объекта.
+        \item Если конструктор получает ресурс, этот класс нуждается в деструкторе, который этот ресурс освобождает.
+        \item Избегай "голых" операторов \mintinline{cpp}{new} и \mintinline{cpp}{delete}.
+        \item Используй обертки для того чтобы управлять ресурсом.
+    \end{enumerate}
+\end{frame}
+
+% https://ravesli.com/urok-85-dinamicheskoe-vydelenie-pamyati-operatory-new-i-delete/
+% https://code-live.ru/post/cpp-array-tutorial-part-2/#_2
+
+%\begin{frame}[t,allowframebreaks]
+%    \frametitle{Литературные источники}
+%    
+%    \nocite{*}
+%    \printbibliography
+%\end{frame}
+
+
+\end{document}
