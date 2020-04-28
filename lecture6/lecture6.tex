@@ -1,0 +1,434 @@
+% !TeX encoding = UTF-8
+% !TeX spellcheck = ru_RU
+% !TeX root = lecture6.tex
+
+\documentclass[
+    8pt,
+    hyperref={pdfencoding=unicode}
+    ]{beamer}
+
+\usepackage{polyglossia}   %% загружает пакет многоязыковой вёрстки
+
+\setmainlanguage{russian}  %% устанавливает главный язык документа
+\setmainfont{Liberation Serif}
+\setromanfont{Liberation Serif} 
+\setmonofont{Fira Code} 
+\setsansfont{Liberation Sans} 
+
+\PolyglossiaSetup{russian}{indentfirst=true}
+
+\newfontfamily{\cyrillicfont}{Liberation Serif}[Ligatures=TeX]
+\newfontfamily{\cyrillicfontrm}{Liberation Serif}[Ligatures=TeX]
+\newfontfamily{\cyrillicfonttt}{Fira Code}[Ligatures=TeX]
+\newfontfamily{\cyrillicfontsf}{Liberation Sans}[Ligatures=TeX]
+
+\usepackage{wasysym,amssymb,amsthm}
+
+\usepackage{pgfplots}
+\usetikzlibrary{arrows,positioning,shapes,calc}
+
+\usepackage{minted}
+\newminted{cpp}{frame=leftline,framerule=1.5pt,framesep=1em,breaklines=true,autogobble=true,tabsize=4}
+
+\usetheme{default}
+\usecolortheme{seagull}
+\useoutertheme[subsection=false]{miniframes}
+\setbeamertemplate{mini frames}[tick]
+
+\usepackage{ragged2e}
+\usepackage{xcolor}
+
+\theoremstyle{definition}
+\newtheorem{myDef}{Определение}
+
+\usepackage{csquotes}
+\usepackage[%
+backend=biber,% движок
+bibencoding=utf8,% кодировка bib файла
+sorting=none,% настройка сортировки списка литературы
+style=gost-numeric,% стиль цитирования и библиографии (по ГОСТ)
+language=autobib,% получение языка из babel/polyglossia, default: autobib % если ставить autocite или auto, то цитаты в тексте с указанием страницы, получат указание страницы на языке оригинала
+autolang=other,% многоязычная библиография
+clearlang=true,% внутренний сброс поля language, если он совпадает с языком из babel/polyglossia
+defernumbers=true,% нумерация проставляется после двух компиляций, зато позволяет выцеплять библиографию по ключевым словам и нумеровать не из большего списка
+sortcites=true,% сортировать номера затекстовых ссылок при цитировании (если в квадратных скобках несколько ссылок, то отображаться будут отсортированно, а не абы как)
+doi=false,% Показывать или нет ссылки на DOI
+isbn=true,% Показывать или нет ISBN, ISSN, ISRN
+]{biblatex}
+\addbibresource{biblio.bib}
+
+\makeatletter
+\setbeamertemplate{section in head/foot}{%
+    \parbox[c][0.33cm][t]{\dimexpr(\textwidth-1.3cm)/\beamer@sectionmax\relax}{%\
+        \hyphenpenalty=9999\RaggedRight\fontsize{4}{4}\selectfont\insertsectionhead}}
+\makeatother
+
+\title{Лекция 6 – Классы в языке C++}
+\institute{Кафедра прикладной математики и информатики}
+\date{\today}
+\begin{document}
+\titlepage 
+\section{Контейнер}
+
+\begin{frame}[fragile, allowframebreaks]{Класс контейнер}
+    \begin{myDef}
+        \emph{Контейнером} называется объект содержащий коллекцию из нескольких элементов.
+    \end{myDef}
+    Мы называем класс \mintinline{cpp}{Vector} контейнером, потому что он предназначен для хранения коллекции нескольких элементов.
+
+    
+    Пара функций конструктор и деструктор позволяет создавать коллекции неизвестного на 
+    момент исполнения размера.
+    
+    Техника получения ресурсов в конструкторе и освобождения их в деструкторе, 
+    известная как Resource Acquisition Is Initialization или RAII, 
+    позволяет нам исключить «голые» операции \mintinline{cpp}{new}, то есть избежать
+    выделения памяти в общем коде и сохранить такие выделяния скрытыми внутри реализации
+    хороших поведенческих абстракций.
+    Точно так же следует избегать «голой» операции \mintinline{cpp}{delete}. Скрытие абстракцией \mintinline{cpp}{new} и \mintinline{cpp}{delete} делает код намного менее подверженным ошибкам и намного легче избежать утечек ресурсов.
+    
+    \newpage
+    В предыдущих лекция мы уже видели пример класса контейнера:
+    
+        \begin{cppcode}
+        class Vector {
+            public:
+            // конструктор класса Vector
+            Vector(int s) :elem{new double[s]}, sz{s} { } 
+            
+            // деструктор класса Vector
+            ~Vector(){ delete[] elem; }
+            
+            // доступ к элементу массива
+            double& operator[](int i) { return elem[i]; } 
+            
+            // размер вектора
+            int size() { return sz; }
+            
+            private:
+            double* elem; // указатель на элементы вектора
+            int sz; // количество элементов
+        };
+    \end{cppcode}    
+\end{frame}
+
+
+
+\begin{frame}[fragile]{Инициализация данных в контейнере}
+    Контейнер существует для хранения элементов, поэтому, очевидно, нам нужны удобные способы доставки элементов в контейнер.
+    Мы можем создать вектор с соответствующим количеством элементов, а затем назначить их, но обычно другие способы более элегантны.
+    
+    Например:
+    \begin{itemize}
+        \item список инициализации
+        \item \mintinline{cpp}{push_back()}
+    \end{itemize}
+
+    \begin{cppcode}
+        class Vector {
+            public:
+            Vector(std::initializer_list<double>); // инициализация списком double
+            // ...
+            void push_back(double); // добавляет новый элемент в конец
+            // ...
+        };
+    \end{cppcode}
+\end{frame}
+
+
+\begin{frame}[fragile]{Список инициализации}
+   \mintinline{cpp}{std::initalizer_list}, используемый для определения конструктора initializer-list, является типом стандартной библиотеки, известным компилятору: когда мы используем {} как список, такой как {1,2,3,4}, компилятор создаст объект типа \mintinline{cpp}{std::initalizer_list} для передачи программе. Итак, мы можем написать:
+   \begin{cppcode}
+       Vector v1 = {1, 2, 3, 4, 5}; // v1 имеет 5 элементов
+       Vector v2 = {1.2, 3.4, 6, 8}; // v2 имеет 4 элемента
+   \end{cppcode}
+    
+    \vfill
+    Конструктор списка инициализации вектора может быть определен так:
+    
+    \begin{cppcode}
+        Vector::Vector(std::initializer_list<double> lst) // инициализация списком
+        :elem{new double[lst.siz e()]}, sz{static_cast<int>(lst.size())}
+        {
+            copy(lst.begin(),lst.end(),elem); // копирование из списка в elem
+        }
+    \end{cppcode}
+    
+\end{frame}
+
+\begin{frame}[fragile]{\mintinline{cpp}{push_back()}}
+    Функция \mintinline{cpp}{push_back()} полезна для ввода произвольного числа элементов. Например:
+    
+    \begin{cppcode}
+        Vector read(istream& is)
+        {
+            Vector v;
+            for (double d; is>>d; ) // читаем числа с двойной точностью во временную переменную d
+            v.push_back(d); // add d to v
+            return v;
+        }
+    \end{cppcode}
+    \vfill
+    Цикл ввода завершается из-за конца файла или ошибки форматирования.
+    До того, как это случится, каждое прочитанное число добавляется в \mintinline{cpp}{Vector}, а именно 
+    добавляется в конец. Размер вектора \mintinline{cpp}{v} равняется количеству прочитанных элементов.    
+\end{frame}
+
+\section{Абстрактные типы}
+\begin{frame}[fragile]{Абстрактные типы}
+    Такие типы, как \mintinline{cpp}{complex} и \mintinline{cpp}{Vector}, называются \emph{базовыми} типами,
+    потому что их представление является частью их определения. В этом они похожи на встроенные типы. 
+    Напротив, \emph{абстрактный} тип -- это тип, который полностью изолирует пользователя от деталей реализации.
+    Для этого мы отделяем интерфейс от представления и оставляем подлинные локальные переменные. 
+    Поскольку мы ничего не знаем о представлении абстрактного типа (даже о его размере), мы должны 
+    разместить объекты в свободном хранилище и получить к ним доступ через ссылки или указатели.
+    
+    
+\end{frame}
+
+\begin{frame}[fragile,allowframebreaks]{Абстрактный тип \mintinline{cpp}{Container}}
+    Сначала мы определим интерфейс класса \mintinline{cpp}{Container}, который мы разработаем 
+    как более абстрактную версию нашего класса \mintinline{cpp}{Vector}:
+    \begin{cppcode}
+        class Container {
+            public:
+            virtual double& operator[](int) = 0; // чистая виртуальная функция
+            virtual int size() const = 0; // константная функция член
+            virtual ~Container() {} // деструктор
+        };
+    \end{cppcode}
+
+    Этот класс является чистым интерфейсом для определенных контейнеров, определенных позже.
+    Слово \mintinline{cpp}{vitrual} означает «может быть позже переопределено в классе, производном от него». 
+    Неудивительно, что функция, объявленная виртуальной, называется виртуальной функцией.
+    Класс, производный от \mintinline{cpp}{Container}, обеспечивает реализацию интерфейса \mintinline{cpp}{Container}.
+    
+    \vspace{4mm}
+    
+    Синтаксис  \mintinline{cpp}{= 0} говорит, что функция чисто виртуальная; то есть некоторый класс, производный от \mintinline{cpp}{Container}, должен определять функцию.
+    
+    \newpage
+    
+    Тем не менее, невозможно определить объект типа \mintinline{cpp}{Container}. Например
+    \begin{cppcode}
+        Container c; // error : there can be no objects of an abstract class
+        Container* p = new Vector_container(10); // OK: Container -- интерфейс
+    \end{cppcode}
+    
+    Контейнер может служить только интерфейсом для класса, который реализует свои функции \mintinline{cpp}{operator[]()} и
+    \mintinline{cpp}{size()}
+    Класс с чисто виртуальной функцией называется абстрактным классом.
+    
+    \vspace{4mm}
+
+    Класс контейнер может быть использован следующим образом
+    \begin{cppcode}
+        void use(Container& c)
+        {
+            const int sz = c.size();
+            for (int i=0; i!=sz; ++i)
+            cout << c[i] << '\n';
+        }
+    \end{cppcode}
+
+    Обратите внимание, как \mintinline{cpp}{use()} использует интерфейс \mintinline{cpp}{Container} при полном незнании деталей 
+    реализации. Он использует \mintinline{cpp}{size()} и \mintinline{cpp}{[]}, не имея представления о том, какой именно тип 
+    обеспечивает их реализацию. Класс, который обеспечивает интерфейс для множества других классов, часто называют полиморфным типом.
+    
+    \vspace{4mm}
+    
+    Как правило для абстрактных классов, контейнер не имеет конструктора.
+    Ведь у него нет данных для инициализации. С другой стороны, контейнер имеет деструктор и этот деструктор
+    является виртуальным, так что классы, производные от \mintinline{cpp}{Container},
+    могут предоставлять реализации. Опять же, это характерно для абстрактных классов, потому что ими, как правило, манипулируют с 
+    помощью ссылок или указателей, а тот, кто уничтожает \mintinline{cpp}{Container} с помощью указателя, не знает, 
+    какие ресурсы принадлежат его реализации.    
+\end{frame}
+
+\begin{frame}[fragile,allowframebreaks]{Реализация интерфейса класса \mintinline{cpp}{Container}}
+    Абстрактный класс Container определяет только интерфейс и никакой реализации. 
+    Чтобы контейнер был полезен, мы должны реализовать контейнер, который реализует функции, требуемые его интерфейсом. 
+    Для этого мы можем использовать конкретный класс \mintinline{cpp}{Vector}:
+    \begin{cppcode}
+        class Vector_container : public Container { // Vector_container реализует интерфейс Container
+          public:
+            Vector_container(int s) : v(s) { } // Vector вектор s элементов
+            ~Vector_container() {}
+            double& operator[](int i) override { return v[i]; }
+            int size() const override { return v.size(); }
+            private:
+            Vector v;
+        };
+    \end{cppcode}
+    Выражение \mintinline{cpp}{:public} может читаться как <<является производным от>> или <<является подтипом>>. Класс 
+    \mintinline{cpp}{Vector_container} называется производным от класса \mintinline{cpp}{Container}, а класс \mintinline{cpp}{Container} 
+    считается базовым классом класса \mintinline{cpp}{Vector_container}. 
+    Альтернативная терминология: подкласс и суперкласс \mintinline{cpp}{Vector_container} и \mintinline{cpp}{Container} соответственно.
+    Говорят, что производный класс наследует членов от своего базового класса, поэтому использование базовых и производных классов 
+    обычно называют наследованием.
+    
+     \vspace{4mm}
+    
+    Считается, что члены \mintinline{cpp}{operator[]()} и \mintinline{cpp}{size()} переопределяют
+    соответствующие члены в базовом классе \mintinline{cpp}{Container}.
+    Здесь используется явное переопределение (\mintinline{cpp}{override}), чтобы явно указать намерение. Использование 
+    \mintinline{cpp}{override} является необязательным, но будучи явным, компилятор может отлавливать ошибки, такие как неправильное 
+    написание имен функций или небольшие различия между типом виртуальной функции и ее предполагаемым переопределением. Явное 
+    использование переопределения особенно полезно в больших классах, где иначе сложно понять, что должно быть переопределено.
+    
+    \vspace{4mm}
+    
+    Деструктор (\mintinline{cpp}{~Vector_container()}) переопределяет деструктор базового класса (\mintinline{cpp}{~Container()}). 
+    Обратите внимание, что деструктор-член \mintinline{cpp}{~Vector()} неявно вызывается деструктором своего класса 
+    (\mintinline{cpp}{~Vector_container()}).
+    
+    \vspace{4mm}
+    
+    Для функции \mintinline{cpp}{use(Container &)} использующей контейнер в полном незнании деталей реализации, 
+    некоторые другие функции должны будут создать объект, с которым она может работать. Например:
+    
+    \begin{cppcode}
+        void g()
+        {
+            Vector_container vc(10); // Vector 10 элементов
+            // ... инициализация данных ...
+            use(vc);
+        }
+    \end{cppcode}
+
+    \newpage
+    Поскольку функция \mintinline{cpp}{use()} не знает о \mintinline{cpp}{Vector_containers}, а знает только интерфейс 
+    \mintinline{cpp}{Container}, она будет работать так же хорошо для другой реализации контейнера. Например:
+    \begin{cppcode}
+        class List_container : public Container { // List_container implements Container
+          public:
+            List_container() { } // пустой список
+            List_container(initializer_list<double> il) : ld{il} { }
+            ~List_container() {}
+            double& operator[](int i) override;
+            int size() const override { return ld.size(); }
+          private:
+            std::list<double> ld; // (standard-library) список double 
+        };
+        double& List_container::operator[](int i)
+            {
+            for (auto& x : ld) {
+                if (i==0)
+                    return x;
+                --i;
+            }
+            throw out_of_range{"List container"};
+        }
+    \end{cppcode}
+    
+    Здесь представление данных -- список стандартной библиотеки параметрзованный типом \mintinline{cpp}{<double>}. Обычно не стоит
+    реализовывать контейнер с операцией произвольного доступа используя список, потому что производительность такого доступа по списку 
+    ужасна по сравнению с произвольным доступом у вектора. Однако здесь просто показана реализация, которая радикально отличается от 
+    обычной.
+    
+    \vspace{4mm}
+    
+    Некоторая функция может создать \mintinline{cpp}{List_container} и затем использовать его при помощи функции  \mintinline{cpp}{use()}:
+    \begin{cppcode}
+        void h()
+        {
+            List_container lc = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+            use(lc);
+        }
+    \end{cppcode}
+
+    
+    Идея в том, что \mintinline{cpp}{use(Container &)} понятия не имеет, является ли его аргумент \mintinline{cpp}{Vector_container} , 
+    \mintinline{cpp}{List_container} или каким-либо другим видом контейнера; этого не нужно знать. Функция может использовать любой вид 
+    контейнера. Она знает только интерфейс, определенный контейнером. Следовательно, \mintinline{cpp}{use(Container &)} не нужно 
+    перекомпилировать, если используется реализация \mintinline{cpp}{List_container} или используется совершенно новый класс, 
+    производный от \mintinline{cpp}{Container}.
+    
+    \vspace{4mm}
+    
+    Обратная сторона этой гибкости заключается в том, что объектами нужно манипулировать с помощью указателей или ссылок.
+    
+\end{frame}
+
+\section{Виртуальные функции}
+
+\begin{frame}[fragile,allowframebreaks]{Виртуальные функции}
+    Рассмотрим снова использование контейнера:
+    \begin{cppcode}
+        void use(Container& c)
+        {
+            const int sz = c.size();
+            for (int i=0; i!=sz; ++i)
+                cout << c[i] << '\n';
+        }
+    \end{cppcode}
+    Как разрешается вызов \mintinline{cpp}{c[i]} в функции \mintinline{cpp}{use(Container &)} до правильного оператора 
+    \mintinline{cpp}{operator[]()}? Когда \mintinline{cpp}{h()}  вызывает \mintinline{cpp}{use()}, должен быть вызван оператор 
+    \mintinline{cpp}{operator[]()}, который реализован в \mintinline{cpp}{List_container}. Когда \mintinline{cpp}{g()}  вызывает 
+    \mintinline{cpp}{use()}, должен быть вызван оператор \mintinline{cpp}{operator[]()}, который реализован в 
+    \mintinline{cpp}{Vector_container}.   
+    
+    \vspace{4mm}
+     
+    Для достижения этого разрешения объект-контейнер должен содержать информацию, позволяющую ему выбрать правильную функцию для вызова 
+    во время выполнения. Обычный метод реализации заключается в том, что компилятор преобразует имя виртуальной функции в индекс таблицы 
+    указателей на функции. Эта таблица обычно называется таблицей виртуальных функций или просто \mintinline{cpp}{vtbl}.
+    
+    \vspace{4mm}
+    
+    Каждый класс с виртуальными функциями имеет свою собственную \mintinline{cpp}{vtbl}, регистрирующую его виртуальные функции. Это может быть представлено графически следующим образом:
+    
+    \begin{figure}
+        \small
+        \begin{tikzpicture}[align=center,font=\ttfamily]
+        
+        \node (vectorContainer) at (0,0) {\mintinline{cpp}{Vector_container:}};
+        \node[draw,rectangle,dashed,below = 0mm of vectorContainer,minimum height=5mm, minimum width = 15mm] (containerV) {};
+        \node[draw,rectangle,below = 0mm of vectorContainer,minimum height=10mm, minimum width = 15mm] (containerVFrame) {};
+        \node[below=0 of containerV, minimum height=5mm] (v) {\mintinline{cpp}{v}};
+        
+        \node[draw,rectangle,right = 10mm of containerV,minimum height=5mm, minimum width = 15mm] (vtblV1) {};
+        \node[draw,rectangle,below = 0 of vtblV1,minimum height=5mm, minimum width = 15mm] (vtblV2) {};
+        \node[draw,rectangle,below = 0 of vtblV2,minimum height=5mm, minimum width = 15mm] (vtblV3) {};
+        \node[above=0 of vtblV1] (vtbl1) {\mintinline{cpp}{vtbl:}};
+        
+        \node[draw,rectangle,right = 10mm of vtblV1,minimum height=5mm, minimum width = 57mm, align=center] (explicitV1) {\mintinline{cpp}{Vector_container::operator[]()}};        
+        \node[draw,rectangle,below = 4mm of explicitV1,minimum height=5mm, minimum width = 57mm, align=center] (explicitV2) {\mintinline{cpp}{Vector_container::size()}};
+        \node[draw,rectangle,below = 4mm of explicitV2,minimum height=5mm, minimum width = 57mm, align=center] (explicitV3) {\mintinline{cpp}{Vector_container::~Vector_container()}};
+        
+        \node[below = 15mm of containerVFrame] (listContainer) {\mintinline{cpp}{List_container:}};
+        \node[draw,rectangle,dashed,below = 0 of listContainer,minimum height=5mm, minimum width = 15mm] (containerL) {};
+        \node[draw,rectangle,below = 0 of listContainer,minimum height=15mm, minimum width = 15mm] (containerLFrame) {};
+        \node[below=0 of containerL, minimum height=10mm] (ld) {\mintinline{cpp}{ld}};
+        
+        \node[draw,rectangle,right = 10mm of containerL,minimum height=5mm, minimum width = 15mm] (vtblL1) {};
+        \node[draw,rectangle,below = 0 of vtblL1,minimum height=5mm, minimum width = 15mm] (vtblL2) {};
+        \node[draw,rectangle,below = 0 of vtblL2,minimum height=5mm, minimum width = 15mm] (vtblL3) {};
+        \node[above=0 of vtblL1] (vtbl2) {\mintinline{cpp}{vtbl:}};
+        
+        \node[draw,rectangle,right = 10mm of vtblL1,minimum height=5mm, minimum width = 57mm, align=center] (explicitL1) {\mintinline{cpp}{List_container::operator[]()}};        
+        \node[draw,rectangle,below = 4mm of explicitL1,minimum height=5mm, minimum width = 57mm, align=center] (explicitL2) {\mintinline{cpp}{List_container::size()}};
+        \node[draw,rectangle,below = 4mm of explicitL2,minimum height=5mm, minimum width = 57mm, align=center] (explicitL3) {\mintinline{cpp}{List_container::~Vector_container()}};
+        
+        \path[draw,-stealth] (containerV.center) -- (vtblV1.west);
+        \path[draw,-stealth] (vtblV1.center) -- (explicitV1.west);
+        \path[draw,-stealth] (vtblV2.center) -- (explicitV2.west);
+        \path[draw,-stealth] (vtblV3.center) -- (explicitV3.west);
+        
+        \path[draw,-stealth] (containerL.center) -- (vtblL1.west);
+        \path[draw,-stealth] (vtblL1.center) -- (explicitL1.west);
+        \path[draw,-stealth] (vtblL2.center) -- (explicitL2.west);
+        \path[draw,-stealth] (vtblL3.center) -- (explicitL3.west);
+                
+        \end{tikzpicture}
+    \end{figure}
+    Функции в \mintinline{cpp}{vtbl} позволяют правильно использовать объект, даже если размер объекта и расположение его данных неизвестны вызывающей стороне. Реализация вызывающей стороны должна знать только местоположение указателя на \mintinline{cpp}{vtbl} в \mintinline{cpp}{Container} и индекс, используемый для каждой виртуальной функции. Этот механизм виртуального вызова можно сделать почти таким же эффективным, как механизм «обычного вызова функции» (в пределах 25\%). Его служебная память занимает один указатель в каждом объекте класса с виртуальными функциями плюс одна \mintinline{cpp}{vtbl} для каждого такого класса.
+\end{frame}
+
+
+
+
+
+
+
+\end{document}
