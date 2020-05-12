@@ -1,0 +1,444 @@
+% !TeX encoding = UTF-8
+% !TeX spellcheck = ru_RU
+% !TeX root = lecture7.tex
+
+\documentclass[
+    8pt,
+    hyperref={pdfencoding=unicode}
+    ]{beamer}
+
+\usepackage{polyglossia}   %% загружает пакет многоязыковой вёрстки
+
+\setmainlanguage{russian}  %% устанавливает главный язык документа
+\setmainfont{Liberation Serif}
+\setromanfont{Liberation Serif} 
+\setmonofont{Fira Code} 
+\setsansfont{Liberation Sans} 
+
+\PolyglossiaSetup{russian}{indentfirst=true}
+
+\newfontfamily{\cyrillicfont}{Liberation Serif}[Ligatures=TeX]
+\newfontfamily{\cyrillicfontrm}{Liberation Serif}[Ligatures=TeX]
+\newfontfamily{\cyrillicfonttt}{Fira Code}[Ligatures=TeX]
+\newfontfamily{\cyrillicfontsf}{Liberation Sans}[Ligatures=TeX]
+
+\usepackage{wasysym,amssymb,amsthm}
+
+\usepackage{pgfplots}
+\usetikzlibrary{arrows,positioning,shapes,calc}
+
+\usepackage{minted}
+\newminted{cpp}{frame=leftline,framerule=1.5pt,framesep=1em,breaklines=true,autogobble=true,tabsize=4}
+
+\usetheme{default}
+\usecolortheme{seagull}
+\useoutertheme[subsection=false]{miniframes}
+\setbeamertemplate{mini frames}[tick]
+
+\usepackage{ragged2e}
+\usepackage{xcolor}
+
+\theoremstyle{definition}
+\newtheorem{myDef}{Определение}
+
+\usepackage{csquotes}
+\usepackage[%
+backend=biber,% движок
+bibencoding=utf8,% кодировка bib файла
+sorting=none,% настройка сортировки списка литературы
+style=gost-numeric,% стиль цитирования и библиографии (по ГОСТ)
+language=autobib,% получение языка из babel/polyglossia, default: autobib % если ставить autocite или auto, то цитаты в тексте с указанием страницы, получат указание страницы на языке оригинала
+autolang=other,% многоязычная библиография
+clearlang=true,% внутренний сброс поля language, если он совпадает с языком из babel/polyglossia
+defernumbers=true,% нумерация проставляется после двух компиляций, зато позволяет выцеплять библиографию по ключевым словам и нумеровать не из большего списка
+sortcites=true,% сортировать номера затекстовых ссылок при цитировании (если в квадратных скобках несколько ссылок, то отображаться будут отсортированно, а не абы как)
+doi=false,% Показывать или нет ссылки на DOI
+isbn=true,% Показывать или нет ISBN, ISSN, ISRN
+]{biblatex}
+\addbibresource{biblio.bib}
+
+\makeatletter
+\setbeamertemplate{section in head/foot}{%
+    \parbox[c][0.33cm][t]{\dimexpr(\textwidth-1.3cm)/\beamer@sectionmax\relax}{%\
+        \hyphenpenalty=9999\RaggedRight\fontsize{4}{4}\selectfont\insertsectionhead}}
+\makeatother
+
+\title{Лекция 7 – Иерархии классов в C++}
+\institute{Кафедра прикладной математики и информатики}
+\date{\today}
+\begin{document}
+\titlepage 
+\section{Иерархии}
+
+\begin{frame}[fragile, allowframebreaks]{Иерархии классов}
+    \begin{myDef}
+       \emph{Иерархия классов} -- это набор классов, упорядоченных в ориентированном графе, 
+       созданной путем наследования (например, public).
+    \end{myDef}
+    Ранее рассмотренный абстрактный класс \mintinline{cpp}{Container} был примером простой иерархии.
+    
+    \vspace{2em}
+    
+    Мы используем иерархии классов для представления концепций, которые имеют иерархические отношения, такие как «Пожарная машина - это 
+    своего рода грузовик, который является своего рода транспортным средством» и «Смайлик - это своего рода круг, который является своего 
+    рода форма. В проектах распространены огромные иерархии с сотнями классов, как в глубину так и в ширину.
+    
+    \begin{figure}
+       \begin{tikzpicture}
+           \node at (0,0) (Shape) {\mintinline{cpp}{Shape}};
+           \node[below left = 0.5 of Shape] (Circle){\mintinline{cpp}{Circle}};
+           \node[below right = 0.5 of Shape] (Triangle){\mintinline{cpp}{Triangle}};
+           \node[below left = 0.5 of Circle] (Smiley){\mintinline{cpp}{Smiley}};
+           
+           \path[draw,-stealth] (Shape) -- (Circle);
+           \path[draw,-stealth] (Shape) -- (Triangle);
+           \path[draw,-stealth] (Circle) -- (Smiley);
+       \end{tikzpicture}
+    \end{figure}
+    Стрелки представляют отношения наследования. 
+    Например, класс \mintinline{cpp}{Circle} является производным от класса \mintinline{cpp}{Shape}
+    
+    Чтобы представить диаграмму в коде, мы должны сначала указать класс, который определяет общие свойства всех фигур:
+    \begin{cppcode}
+        class Shape {
+            public:
+            virtual Point center() const = 0; // чистая виртуальная функция
+            virtual void move(Point to) = 0;
+            virtual void draw() const = 0;    // виртуальная функция отрисовки
+            virtual void rotate(int angle) = 0;
+            virtual ~Shape() {}	// деструктор
+            // ...
+        };
+    \end{cppcode}
+    
+    Естественно, этот интерфейс является абстрактным классом: что касается представления данных,
+    то ничего (кроме расположения указателя на \mintinline{cpp}{vtbl}) не является общим для каждого \mintinline{cpp}{Shape}. 
+    
+    Приведя это определение, мы можем написать общие функции, управляющие векторами указателей на фигуры:
+    
+    \begin{cppcode}
+        void rotate_all(vector<Shape*>& v, int angle) // поворот всех элементов вектора на угол angle
+        {
+            for (auto p : v)
+            p->rotate(angle);
+        }
+    \end{cppcode}
+
+    
+   
+    
+\end{frame}
+
+\begin{frame}[fragile, allowframebreaks]{Произвольные классы}    
+     Чтобы определить конкретную форму, мы должны указать, какая это форма 
+    и определить ее конкретные свойства (включая ее виртуальные функции):
+    \begin{cppcode}
+        class Circle : public Shape {
+            public:
+            Circle(Point p, int rad); // конструктор
+            Point center() const override
+            {
+                return x;
+            }
+            void move(Point to) override
+            {
+                x = to;
+            }
+            void draw() const override;
+            void rotate(int) override {} // отличный простой алгоритм
+            private:
+            Point x; // центр
+            int r; // радиус
+        };
+    \end{cppcode}
+
+    \newpage
+    Пока что в примере \mintinline{cpp}{Shape} and \mintinline{cpp}{Circle} нет ничего нового по сравнению с примером 
+    \mintinline{cpp}{Container} и \mintinline{cpp}{Vector_container}, но мы можем построить дальше:
+    
+    {\small \begin{cppcode}
+        class Smiley : public Circle { // используем Circle как родительский класс
+            public:
+            Smiley(Point p, int rad) : Circle{p,rad}, mouth{nullptr} { }
+            ~Smiley()
+            {
+                delete mouth;
+                for (auto p : eyes)
+                delete p;
+            }
+            void move(Point to) override;
+            void draw() const override;
+            void rotate(int) override;
+            void add_eye(Shape* s)
+            {
+                eyes.push_back(s);
+            }
+            void set_mouth(Shape* s);
+            virtual void wink(int i); // моргнуть глазом № i 
+            // ...
+            private:
+            vector<Shape*> eyes; // обычно 2 глаза
+            Shape* mouth;
+        };
+    \end{cppcode}
+    }
+
+   Теперь мы можем определить \mintinline{cpp}{Smiley::draw()}, используя вызовы родительского класса \mintinline{cpp}{Circle} и других членов класса:
+   {\small \begin{cppcode}
+       void Smiley::draw() const
+       {
+           Circle::draw();
+           for (auto p : eyes)
+           p->draw();
+           mouth->draw();
+       }
+   \end{cppcode} 
+    }
+    
+    Обратите внимание на то, как \mintinline{cpp}{Smiley} следит за вектором стандартной библиотеки и удаляет их в своем деструкторе.
+    Деструктор \mintinline{cpp}{Shape} виртуален, а деструктор \mintinline{cpp}{Smiley} переопределяет его. 
+    Виртуальный деструктор необходим для абстрактного класса, поскольку объектом производного
+    класса обычно манипулируют через интерфейс, предоставляемый его абстрактным базовым классом. 
+    В частности, он может быть удален через указатель на базовый класс.
+    Затем механизм вызова виртуальной функции обеспечивает вызов надлежащего деструктора. 
+    Затем этот деструктор неявно вызывает деструкторы его родительского класса и членов.
+    
+    \vspace{1em}
+    В этом упрощенном примере задачей программиста является размещение глаз и рта соответствующим образом внутри круга,
+    представляющего лицо.
+    Мы можем добавить поля данных, методы или и то и другое, поскольку мы определяем новый класс путем наследования.
+    Это дает большую гибкость с соответствующими возможностями для путаницы и плохого дизайна.
+    
+\end{frame}
+
+\section{Плюсы иерархии классов}
+
+\begin{frame}[fragile]{Польза}
+    Иерархия классов предлагает два вида преимуществ:
+    \begin{itemize}
+        \item \emph{Наследование интерфейса}: объект производного класса можно использовать везде, где требуется объект базового класса. 
+        Таким образом, базовый класс действует как интерфейс для производного класса. Классы  \mintinline{cpp}{Container} и  
+        \mintinline{cpp}{Shape} являются примерами. Такие классы часто являются абстрактными классами.
+        
+        \item \emph{Наследование реализации}: базовый класс предоставляет функции или данные, которые упрощают реализацию производных 
+        классов. Примеры использования в \mintinline{cpp}{Smiley} конструктора \mintinline{cpp}{Circle} и 
+        \mintinline{cpp}{Circle::draw ()}. Такие базовые  классы часто имеют поля-члены и конструкторы.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Concrete vs base class}
+    Конкретные классы -- особенно классы с небольшими представлениями -- очень похожи на встроенные типы: мы определяем их как локальные 
+    переменные, обращаемся к ним по их именам, копируем их и т.д. Классы в иерархиях классов различны: мы склонны размещать их в куче 
+    (динамической памяти) с использованием ключевого слова \mintinline{cpp}{new}, и мы получаем к ним доступ через указатели или ссылки. 
+    
+    \begin{block}{note}
+        оба типа классов в русском языке тяготеет к переводу "базовый класс".
+    \end{block}
+    
+\end{frame}
+
+\begin{frame}[fragile,allowframebreaks]{Пример чтения}
+    Рассмотрим функцию, которая считывает данные, описывающие фигуры, из входного потока и создает соответствующие объекты \mintinline{cpp}{Shape}:
+    {\small \begin{cppcode}
+        enum class Kind { circle, triangle , smiley };
+        Shape* read_shape(istream& is) // читает описание Shape из istream is
+        {
+            // ... чтение заголовка, чтобы определить Kind k ...
+            switch (k) {
+                case Kind::circle:
+                // read circle data {Point,int} into p and r
+                return new Circle{p,r};
+                case Kind::triangle:
+                // read triangle data {Point,Point,Point} into p1, p2, and p3
+                return new Triangle{p1,p2,p3};
+                case Kind::smiley:
+                // read smiley data {Point,int,Shape,Shape,Shape} into p, r, e1, e2, and m
+                Smiley* ps = new Smiley{p,r};
+                ps->add_eye(e1);
+                ps->add_eye(e2);
+                ps->set_mouth(m);
+                return ps;
+            }
+        }
+    \end{cppcode}
+    }
+
+    \newpage
+    \small
+    Программа может использовать такое чтение формы следующим образом:
+    \begin{cppcode}
+        void user()
+        {
+            std::vector<Shape*> v;
+            while (cin)
+            v.push_back(read_shape(cin));
+            draw_all(v); //вызов draw() для каждого элемента
+            rotate_all(v,45); //вызов rotate(45) для каждого элемента
+            for (auto p : v) // не забываем удалять данные из вектора
+                delete p;
+        }
+    \end{cppcode}
+    Очевидно, что пример упрощен -- особенно в отношении обработки ошибок - но он наглядно демонстрирует, что \mintinline{cpp}{user()}  
+    абсолютно не представляет, с какими формами он манипулирует. Код \mintinline{cpp}{user()} может быть скомпилирован один раз, а затем 
+    использован для новых фигур, добавленных в программу. Обратите внимание, что нет указателей на фигуры вне \mintinline{cpp}{user()} , 
+    поэтому \mintinline{cpp}{user()} отвечает за их освобождение. Это делается с помощью оператора удаления и критически зависит от 
+    виртуального деструктора \mintinline{cpp}{Shape}. Поскольку этот деструктор является виртуальным, \mintinline{cpp}{delete} вызывает 
+    деструктор для самого производного класса. Это очень важно, поскольку производный класс может получить все виды ресурсов (например, 
+    файловые дескрипторы, блокировки и выходные потоки), которые должны быть освобождены. В этом случае Смайлик удаляет свои глаза и 
+    предметы рта. После этого он вызывает деструктор Круга. Объекты конструируются «снизу вверх» конструкторами, а 
+    «разрушаются сверху» деструкторами.
+\end{frame}
+
+\section{Навигация в иерархии}
+\begin{frame}[fragile]{Определение класса наследника}
+    Функция \mintinline{cpp}{read_shape()} возвращает \mintinline{cpp}{Shape*}, чтобы мы могли обрабатывать все объекта типа \mintinline{cpp}{Shape} одинаково. Однако что мы можем сделать, если мы хотим использовать функцию-член, которая предоставляется только определенным производным классом, таким как \mintinline{cpp}{Smiley::wink()}? Мы можем спросить: «Эта форма -- своего рода смайлик?», Используя оператор \mintinline{cpp}{dynamic_cast}:
+    \begin{cppcode}
+        Shape* ps {read_shape(cin)};
+        if (Smiley* p = dynamic_cast<Smiley*>(ps)) { // ... указатель на Smiley? ...
+            // ... Smiley; используем 
+        }
+        else {
+            // ... не Smiley, пробуем что-то еще ...
+        }
+    \end{cppcode}
+
+    Если во время выполнения объект, на который указывает аргумент \mintinline{cpp}{dynamic_cast} (\mintinline{cpp}{ps}), 
+    не относится к ожидаемому типу (здесь \mintinline{cpp}{Smiley}) или к классу, производному от ожидаемого типа, 
+    \mintinline{cpp}{dynamic_cast} возвращает \mintinline{cpp}{nullptr}.
+\end{frame}
+
+\begin{frame}[fragile]{Исключение при \mintinline{cpp}{dynamic_cast}}
+    Мы используем \mintinline{cpp}{dynamic_cast} для типа указателя, когда указатель на объект другого производного класса является допустимым аргументом. 
+    Затем мы проверяем, является ли результат нулевым. Этот тест часто удобно помещать в инициализацию переменной в условии.
+    \vspace{1em}
+    
+    Когда другой тип неприемлем, мы можем просто провести \mintinline{cpp}{dynamic_cast} на ссылочный тип. 
+    Если объект не относится к ожидаемому типу, \mintinline{cpp}{dynamic_cast} генерирует исключение \mintinline{cpp}{bad_cast}:
+    
+    \begin{cppcode}
+        Shape* ps {read_shape(cin)};
+        Smiley& r {dynamic_cast<Smiley&>(*ps)}; // где-то позже обработаем исключение std::bad_cast
+    \end{cppcode}
+
+    
+\end{frame}
+
+\begin{frame}[fragile]{\mintinline{cpp}{dynamic_cast}}
+    
+    Код чище, когда \mintinline{cpp}{dynamic_cast} используется со сдержанностью. Если мы можем избежать использования информации о 
+    типе, мы можем написать более простой и эффективный код, но иногда информация о типе теряется и должна быть восстановлена. Обычно 
+    это происходит, когда мы передаем объект в какую-либо систему, которая принимает интерфейс, заданный базовым классом. Когда эта 
+    система позже передаст объект нам. Нам, возможно, придется восстановить исходный тип. Операции, аналогичные 
+    \mintinline{cpp}{dynamic_cast}, известны как "является своего рода", "является экземпляром".
+\end{frame}
+
+\section{Избегаем утечки ресурсов}
+\begin{frame}[fragile]{Ошибки в реализации}
+    Опытные программисты заметят, что мы оставили открытыми три возможности для ошибок:
+    \begin{itemize}
+        \item Разработчик \mintinline{cpp}{Smiley} может не справиться с удалением указателя  \mintinline{cpp}{mouth}.
+        \item Пользователь \mintinline{cpp}{read_shape()} может не справиться с удалением возвращаемого указателя.
+        \item Владелец контейнера содержащего набор \mintinline{cpp}{Shape*} может не справиться с удалением объектов, на которые указывает указатель.
+    \end{itemize}
+
+    В этом смысле указатели на объекты, размещенные в динамической памяти, опасны: «простой старый указатель» не должен использоваться для представления владения ресурсом. Например:
+    
+    \begin{cppcode}
+        void user(int x)
+        {
+            Shape* p = new Circle{Point{0,0},10};
+            // ...
+            if (x<0) throw Bad_x{}; // возможная утечка
+            if (x==0) return; // возможная утечка
+            // ...
+            delete p;
+        }
+    \end{cppcode}
+
+    Это утечкой памяти, если \mintinline{cpp}{x} не является положительным. 
+    Присваивание результата оператора \mintinline{cpp}{new} «голому указателю» вызывает проблемы.
+\end{frame}
+
+\begin{frame}[fragile,allowframebreaks]{Избегаем проблем с памятью}
+    Одним простым решением таких проблем является использование \mintinline{cpp}{unique_ptr} из стандартной библиотеки, а не «голый указатель», когда требуется удаление:
+    \begin{cppcode}
+        class Smiley : public Circle {
+            // ...
+            private:
+            vector<unique_ptr<Shape>> eyes; // обычно два глаза
+            unique_ptr<Shape> mouth;
+        };
+    \end{cppcode}
+    Это пример простого, общего и эффективного метода управления ресурсами.
+    \vspace{1em}
+    
+    Как приятный побочный эффект этого изменения, нам больше не нужно определять деструктор для \mintinline{cpp}{Smiley}. Компилятор неявно сгенерирует тот, который выполняет требуемое уничтожение \mintinline{cpp}{unique_ptr} в векторе. Код, использующий \mintinline{cpp}{unique_ptr}, будет так же эффективен, как и код, использующий голые указатели.
+    
+    \newpage
+    
+    \small
+    Теперь рассмотрим использование \mintinline{cpp}{read_shape()}:
+    \begin{cppcode}
+        unique_ptr<Shape> read_shape(istream& is) // читает описание Shape из istream is
+        {
+            // ... чтение заголовка, чтобы определить Kind k ...
+            switch (k) {
+                case Kind::circle:
+                // read circle data {Point,int} into p and r
+                return unique_ptr<Shape>{new Circle{p,r}}; 
+                // ...
+            }
+        }
+    \end{cppcode}
+
+    \begin{cppcode}
+        void user()
+        {
+            vector<unique_ptr<Shape>> v;
+            while (cin)
+            v.push_back(read_shape(cin));
+            draw_all(v); //вызываем draw() для каждого элемента
+            rotate_all(v,45); //вызываем rotate(45) для каждого элемента
+        } // все Shape неявно разрушены
+    \end{cppcode}
+    Теперь каждый объект принадлежит \mintinline{cpp}{unique_ptr}, который будет удалять объект,
+    когда он больше не нужен, то есть когда его \mintinline{cpp}{unique_ptr} выходит из области видимости.
+    
+    Чтобы работала версия \mintinline{cpp}{unique_ptr} \mintinline{cpp}{user()}, нам нужны версии \mintinline{cpp}{draw_all()} и \mintinline{cpp}{rotate_all()}, которые принимают\mintinline{cpp}{vector<unique_ptr<Shape>>}.
+\end{frame}
+
+\section{Рекомендации}
+
+\begin{frame}[fragile,allowframebreaks]{Рекомедации}
+    \begin{enumerate}
+        \item Выражай идеи прямо в коде.
+        \item Конкретный тип (concrete type) -- самый простой вид класса. Где это применимо, предпочитайте конкретный тип более сложным классам и простым структурам данных.
+        \item Используйте конкретные классы для представления простых концепций.
+        \item Предпочитайте конкретные классы иерархиям классов для компонентов, критичных к производительности.
+        \item Определяйте конструкторы для инициализации объектов.
+        \item Объявляйте функцию членом, только если ей нужен прямой доступ к представлению данных класса.
+        \item Определяйте оператороы в первую очередь для имитации обычного использования.
+        \item Используйте свободные функции для симметричных операторов.
+        \item Объявляйте функцию-член, которая не изменяет состояние своего объекта \mintinline{cpp}{const}.
+        \item Если конструктор получает ресурс, его классу нужен деструктор для освобождения ресурса.
+        \item Избегайте «голых» операций \mintinline{cpp}{new} и \mintinline{cpp}{delete}.
+        \item Используйте дескрипторы ресурсов и RAII для управления ресурсами.
+        \item Если класс является контейнером, создайте ему конструктор списка инициализаторов.
+        \item Используйте абстрактные классы в качестве интерфейсов, когда необходимо полное разделение интерфейса и реализации.
+        \item Получайте доступ к полиморфным объектам через указатели и ссылки.
+        \item Абстрактный класс обычно не нуждается в конструкторе.
+        \item Используйте иерархии классов для представления концепций с внутренней иерархической структурой.
+        \item Класс с виртуальной функцией должен иметь виртуальный деструктор.
+        \item Используйте \mintinline{cpp}{override}, чтобы указать переопределение явным в больших иерархиях классов.
+        \item При разработке иерархии классов следует различать наследование реализации и наследование интерфейса.
+        \item Используйте \mintinline{cpp}{dynamic_cast}, где навигация по иерархии классов неизбежна.
+        \item Используйте \mintinline{cpp}{dynamic_cast} для ссылочного типа, когда неудача получения требуемого класса является ошибкой.
+        \item Используйте \mintinline{cpp}{dynamic_cast} для типа указателя, когда неудача получения требуемого класса является допустимой альтернативой.
+        \item Используйте \mintinline{cpp}{unique_ptr} или \mintinline{cpp}{shared_ptr}, чтобы не забыть удалить объекты, созданные с помощью \mintinline{cpp}{new}.
+    \end{enumerate}
+\end{frame}
+
+
+
+
+\end{document}
